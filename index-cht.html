@@ -1,0 +1,235 @@
+<html><head>
+<title>線性迴歸探索器</title>
+<script src="https://cdn.streamlit.io/1.22.0/streamlit.js"></script>
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.4/d3.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap');
+  
+  body {
+    font-family: 'Orbitron', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #0c0c0c;
+    color: #00ff00;
+    overflow: hidden;
+  }
+  .stApp {
+    display: flex;
+    height: 100vh;
+  }
+  .control-panel {
+    flex: 1;
+    padding: 2rem;
+    background-color: rgba(0, 255, 0, 0.1);
+    border-right: 2px solid #00ff00;
+    box-shadow: 0 0 10px #00ff00;
+  }
+  .chart-area {
+    flex: 2;
+    padding: 2rem;
+    display: flex;
+    flex-direction: column;
+  }
+  h1 {
+    color: #00ff00;
+    margin-bottom: 2rem;
+    font-size: 1.8rem;
+    text-shadow: 0 0 10px #00ff00;
+  }
+  .slider-container {
+    margin-bottom: 2rem;
+  }
+  .slider-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+    text-shadow: 0 0 5px #00ff00;
+  }
+  .slider {
+    width: 100%;
+    -webkit-appearance: none;
+    background: #000;
+    outline: none;
+    border: 1px solid #00ff00;
+    box-shadow: 0 0 5px #00ff00;
+  }
+  .slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #00ff00;
+    cursor: pointer;
+    border-radius: 50%;
+  }
+  .slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    background: #00ff00;
+    cursor: pointer;
+    border-radius: 50%;
+  }
+  #chart {
+    border: 2px solid #00ff00;
+    box-shadow: 0 0 10px #00ff00;
+  }
+</style>
+</head>
+<body>
+<div class="stApp">
+  <div class="control-panel">
+    <h1>線性迴歸探索器</h1>
+    <div class="slider-container">
+      <label class="slider-label">斜率 (a)</label>
+      <input type="range" id="a-slider" class="slider" min="-5" max="5" step="0.1" value="1">
+      <span id="a-value">1</span>
+    </div>
+    <div class="slider-container">
+      <label class="slider-label">雜訊 (c)</label>
+      <input type="range" id="c-slider" class="slider" min="0" max="10" step="0.1" value="1">
+      <span id="c-value">1</span>
+    </div>
+    <div class="slider-container">
+      <label class="slider-label">樣本大小 (n)</label>
+      <input type="range" id="n-slider" class="slider" min="100" max="1000" step="1" value="500">
+      <span id="n-value">500</span>
+    </div>
+  </div>
+  <div class="chart-area">
+    <div id="chart"></div>
+  </div>
+</div>
+
+<script>
+  // Initialize variables
+  let a = 1, c = 1, n = 500;
+
+  // Helper functions
+  function randn() {
+    return Math.sqrt(-2.0 * Math.log(Math.random())) * Math.cos(2.0 * Math.PI * Math.random());
+  }
+
+  function generateData() {
+    const x = d3.range(n).map(() => Math.random() * 200 - 100);
+    const y = x.map(xi => a * xi + 50 + c * randn());
+    return {x, y};
+  }
+
+  function linearRegression(x, y) {
+    const n = x.length;
+    let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+    for (let i = 0; i < n; i++) {
+      sumX += x[i];
+      sumY += y[i];
+      sumXY += x[i] * y[i];
+      sumXX += x[i] * x[i];
+    }
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+    return {slope, intercept};
+  }
+
+  function updateChart() {
+    const {x, y} = generateData();
+    const result = linearRegression(x, y);
+
+    const trace1 = {
+      x: x,
+      y: y,
+      mode: 'markers',
+      type: 'scatter',
+      name: '資料',
+      marker: {
+        color: '#00ff00',
+        size: 8,
+        line: {
+          color: '#ffffff',
+          width: 1
+        }
+      }
+    };
+
+    const xRange = [Math.min(...x), Math.max(...x)];
+    const yPred = xRange.map(xi => result.slope * xi + result.intercept);
+
+    const trace2 = {
+      x: xRange,
+      y: yPred,
+      mode: 'lines',
+      type: 'scatter',
+      name: '迴歸線',
+      line: {color: '#ff00ff', width: 2}
+    };
+
+    const layout = {
+      title: {
+        text: '線性迴歸',
+        font: {
+          color: '#00ff00',
+          family: 'Orbitron, sans-serif'
+        }
+      },
+      xaxis: {
+        title: 'X',
+        color: '#00ff00',
+        gridcolor: '#003300'
+      },
+      yaxis: {
+        title: 'Y',
+        color: '#00ff00',
+        gridcolor: '#003300'
+      },
+      hovermode: 'closest',
+      showlegend: true,
+      legend: {
+        x: 0,
+        y: 1,
+        font: {
+          color: '#00ff00'
+        }
+      },
+      plot_bgcolor: '#000000',
+      paper_bgcolor: '#000000',
+      font: {
+        family: 'Orbitron, sans-serif',
+        color: '#00ff00'
+      }
+    };
+
+    Plotly.newPlot('chart', [trace1, trace2], layout);
+
+    function breathe() {
+      const baseOpacity = 0.7;
+      const breatheIntensity = 0.2;
+      const update = {
+        'marker.opacity': [Array(n).fill(baseOpacity + breatheIntensity * Math.sin(Date.now() / 1000))]
+      };
+      Plotly.restyle('chart', update, [0]);
+      requestAnimationFrame(breathe);
+    }
+    breathe();
+  }
+
+  document.getElementById('a-slider').addEventListener('input', function(e) {
+    a = parseFloat(e.target.value);
+    document.getElementById('a-value').textContent = a.toFixed(1);
+    updateChart();
+  });
+
+  document.getElementById('c-slider').addEventListener('input', function(e) {
+    c = parseFloat(e.target.value);
+    document.getElementById('c-value').textContent = c.toFixed(1);
+    updateChart();
+  });
+
+  document.getElementById('n-slider').addEventListener('input', function(e) {
+    n = parseInt(e.target.value);
+    document.getElementById('n-value').textContent = n;
+    updateChart();
+  });
+
+  updateChart();
+</script>
+</body>
+</html>
